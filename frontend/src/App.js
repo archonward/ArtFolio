@@ -1,7 +1,7 @@
 import './App.css';
 import LineGraph from './components/LineGraph';
 import { useState, useEffect } from 'react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 function App() {
   // Form state
@@ -33,7 +33,7 @@ function App() {
     loadSnapshots();
   }, []);
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const selectedFile = e.target.files[0];
     setFile(selectedFile);
     setParsingError(null);
@@ -41,45 +41,52 @@ function App() {
 
     if (!selectedFile) return;
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const data = new Uint8Array(evt.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+    try {
+      // Read file as ArrayBuffer
+      const arrayBuffer = await selectedFile.arrayBuffer();
 
-        let parsed = [];
-        for (let i = 1; i < json.length; i++) {
-          const row = json[i];
-          if (!Array.isArray(row) || row.length < 2) continue;
+      // Load workbook with ExcelJS
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(arrayBuffer);
 
-          const rawCompany = row[0];
-          const rawWeight = row[1];
+      // Get first worksheet
+      const worksheet = workbook.getWorksheet(1);
+      if (!worksheet) throw new Error('No worksheet found in file');
 
-          if (!rawCompany || typeof rawCompany !== 'string') continue;
-          const company = rawCompany.toString().trim();
-          if (!company || /total|sum/i.test(company)) continue;
+      const parsed = [];
 
-          const weight = parseFloat(rawWeight);
-          if (isNaN(weight) || weight < 0) continue;
+      // Iterate through rows (ExcelJS is 1-indexed)
+      worksheet.eachRow((row, rowNumber) => {
+        // Skip header row
+        if (rowNumber === 1) return;
 
-          parsed.push({ company, weight });
-        }
+        const companyCell = row.getCell(1).value;
+        const weightCell = row.getCell(2).value;
 
-        if (parsed.length === 0) {
-          throw new Error('No valid company/weight data found.');
-        }
+        // Validate and clean company name
+        if (!companyCell || typeof companyCell !== 'string') return;
+        const company = companyCell.trim();
+        if (!company || /total|sum/i.test(company)) return;
 
-        parsed.sort((a, b) => b.weight - a.weight);
-        setWeights(parsed);
-      } catch (err) {
-        console.error('Parse error:', err);
-        setParsingError('Failed to parse Excel. Check format.');
+        // Validate and parse weight
+        const weight = parseFloat(weightCell);
+        if (isNaN(weight) || weight < 0) return;
+
+        parsed.push({ company, weight });
+      });
+
+      if (parsed.length === 0) {
+        throw new Error('No valid company/weight data found.');
       }
-    };
-    reader.readAsArrayBuffer(selectedFile);
+
+      // Sort by weight descending
+      parsed.sort((a, b) => b.weight - a.weight);
+      setWeights(parsed);
+
+    } catch (err) {
+      console.error('Parse error:', err);
+      setParsingError('Failed to parse Excel. Check format and ensure columns: Company (A), Weight % (B)');
+    }
   };
 
   const handleSubmit = async (e) => {
