@@ -20,16 +20,24 @@ function App() {
     const loadSnapshots = async () => {
       try {
         const res = await fetch('/api/snapshots');
-        if (!res.ok) throw new Error('Failed to load');
+
+        if (!res.ok) {
+          const errText = await res.text().catch(() => 'Unknown error');
+          throw new Error(`Failed to load: ${res.status} - ${errText}`);
+        }
+
         const data = await res.json();
+        console.log(' Loaded snapshots:', data); // Debug log
         setSnapshots(data);
+
       } catch (err) {
-        console.error('Load failed:', err);
-        alert('Could not load data. Check backend.');
+        console.error(' Load failed:', err);
+        alert('Could not load data. Check backend connection.');
       } finally {
         setLoading(false);
       }
     };
+
     loadSnapshots();
   }, []);
 
@@ -250,7 +258,7 @@ function App() {
           <LineGraph data={totalValueData} type="value" />
 
           <h2>Company Weight Evolution Over Time</h2>
-          <LineGraph data={weightSeries} type="weight" />
+          <LineGraph data={weightSeries} type="weight" yDomain={[0, 15]} />
         </>
       )}
 

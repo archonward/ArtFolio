@@ -105,8 +105,9 @@ const LineGraph = ({ data, type = 'value' }) => {
               dataKey="date" 
               tickFormatter={(str) => new Date(str).toLocaleDateString()}
             />
-            <YAxis 
-              domain={[0, 100]}
+            {/* CHANGED: domain from [0, 100] to [0, 15] */}
+            <YAxis
+              domain={[0, 15]}
               tickFormatter={(value) => `${value}%`}
             />
             <Tooltip content={<CustomTooltip />} />
