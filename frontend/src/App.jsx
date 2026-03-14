@@ -17,6 +17,7 @@ function App() {
   const [snapshots, setSnapshots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [editingSnapshotId, setEditingSnapshotId] = useState(null);
 
   useEffect(() => {
     const loadSnapshots = async () => {
@@ -58,26 +59,6 @@ function App() {
       });
   }, [weights]);
 
-  const latestSnapshot = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
-  const firstSnapshot = snapshots.length > 0 ? snapshots[0] : null;
-
-  const overallValueChange =
-    latestSnapshot && firstSnapshot
-      ? latestSnapshot.totalValue - firstSnapshot.totalValue
-      : null;
-
-  const overallValueChangePct =
-    latestSnapshot && firstSnapshot && firstSnapshot.totalValue > 0
-      ? ((overallValueChange / firstSnapshot.totalValue) * 100).toFixed(1)
-      : null;
-
-  const latestTopHolding =
-    latestSnapshot && latestSnapshot.weights.length > 0
-      ? latestSnapshot.weights.reduce((top, current) =>
-          current.weight > top.weight ? current : top
-        )
-      : null;
-
   const handleFileChange = async (e) => {
     const selectedFile = e.target.files[0];
 
@@ -118,14 +99,38 @@ function App() {
     setWeights([]);
     setParsingError('');
     setDate(new Date().toISOString().split('T')[0]);
+    setEditingSnapshotId(null);
+    setSubmitError('');
+    setSubmitSuccess('');
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
+  const handleEdit = (snapshot) => {
+    setDate(new Date(snapshot.date).toISOString().split('T')[0]);
+    setTotalValue(String(snapshot.totalValue));
+    setWeights(snapshot.weights.map((w) => ({
+      company: w.company,
+      weight: Number(w.weight),
+    })));
+    setFile(null);
+    setParsingError('');
+    setSubmitError('');
+    setSubmitSuccess('');
+    setEditingSnapshotId(snapshot._id);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (submitting) {
       return;
     }
@@ -137,7 +142,9 @@ function App() {
 
     const duplicateDateExists = snapshots.some((snapshot) => {
       const snapshotDate = new Date(snapshot.date).toISOString().split('T')[0];
-      return snapshotDate === date;
+      const isSameDate = snapshotDate === date;
+      const isDifferentSnapshot = snapshot._id !== editingSnapshotId;
+      return isSameDate && isDifferentSnapshot;
     });
 
     if (duplicateDateExists) {
@@ -157,25 +164,51 @@ function App() {
     setSubmitting(true);
 
     try {
-      const res = await fetch('/api/snapshots', {
-        method: 'POST',
+      const isEditing = Boolean(editingSnapshotId);
+      const url = isEditing
+        ? `/api/snapshots/${editingSnapshotId}`
+        : '/api/snapshots';
+      const method = isEditing ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(snapshotData),
       });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Submission failed.');
+        throw new Error(err.error || (isEditing ? 'Update failed.' : 'Submission failed.'));
       }
 
-      const newSnapshot = await res.json();
+      const savedSnapshot = await res.json();
 
-      setSnapshots((prev) =>
-        [...prev, newSnapshot].sort((a, b) => new Date(a.date) - new Date(b.date))
-      );
+      if (isEditing) {
+        setSnapshots((prev) =>
+          prev
+            .map((snapshotItem) =>
+              snapshotItem._id === editingSnapshotId ? savedSnapshot : snapshotItem
+            )
+            .sort((a, b) => new Date(a.date) - new Date(b.date))
+        );
+        setSubmitSuccess('Snapshot updated successfully.');
+      } else {
+        setSnapshots((prev) =>
+          [...prev, savedSnapshot].sort((a, b) => new Date(a.date) - new Date(b.date))
+        );
+        setSubmitSuccess('Snapshot saved successfully.');
+      }
 
-      resetForm();
-      setSubmitSuccess('Snapshot saved successfully.');
+      setTotalValue('');
+      setFile(null);
+      setWeights([]);
+      setParsingError('');
+      setDate(new Date().toISOString().split('T')[0]);
+      setEditingSnapshotId(null);
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     } catch (err) {
       console.error('Save failed:', err);
       setSubmitError(err.message || 'Failed to save snapshot.');
@@ -195,7 +228,13 @@ function App() {
       if (!res.ok) {
         throw new Error('Delete failed.');
       }
+
       setSnapshots((prev) => prev.filter((s) => s._id !== id));
+
+      if (editingSnapshotId === id) {
+        resetForm();
+      }
+
       setSubmitSuccess('Snapshot deleted.');
       setSubmitError('');
     } catch (err) {
@@ -217,6 +256,7 @@ function App() {
         throw new Error('Reset failed.');
       }
       setSnapshots([]);
+      resetForm();
       setSubmitSuccess('All snapshots cleared.');
       setSubmitError('');
     } catch (err) {
@@ -262,7 +302,10 @@ function App() {
       )}
 
       <section className="section-card">
-        <h2>Add Portfolio Snapshot</h2>
+        <h2>
+          {editingSnapshotId ? 'Edit Portfolio Snapshot' : 'Add Portfolio Snapshot'}
+          {editingSnapshotId && <span className="edit-mode-badge">Editing</span>}
+        </h2>
 
         <form onSubmit={handleSubmit}>
           <div className="form-row">
@@ -314,6 +357,9 @@ function App() {
               onChange={handleFileChange}
             />
             {file && <span className="file-name">✓ {file.name}</span>}
+            {!file && editingSnapshotId && weights.length > 0 && (
+              <span className="existing-weights-note">Using existing uploaded weights</span>
+            )}
           </div>
 
           {parsingError && (
@@ -350,58 +396,84 @@ function App() {
             </div>
           )}
 
-          <button
-            type="submit"
-            className="button button-primary"
-            disabled={submitting || weights.length === 0}
-          >
-            {submitting ? 'Saving...' : 'Save Snapshot'}
-          </button>
+          <div className="form-actions">
+            <button
+              type="submit"
+              className="button button-primary"
+              disabled={submitting || weights.length === 0}
+            >
+              {submitting
+                ? (editingSnapshotId ? 'Updating...' : 'Saving...')
+                : (editingSnapshotId ? 'Update Snapshot' : 'Save Snapshot')}
+            </button>
+
+            {editingSnapshotId && (
+              <button
+                type="button"
+                className="button button-muted"
+                onClick={resetForm}
+                disabled={submitting}
+              >
+                Cancel Edit
+              </button>
+            )}
+          </div>
         </form>
       </section>
 
-      {snapshots.length > 0 && (
-        <section className="summary-grid">
-          <div className="summary-card">
-            <div className="summary-label">Latest Portfolio Value</div>
-            <div className="summary-value">
-              ${latestSnapshot.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-            </div>
-            <div className="summary-subtext">
-              {new Date(latestSnapshot.date).toLocaleDateString()}
-            </div>
-          </div>
+    {snapshots.length > 0 && (() => {
+            const latestSnapshot = snapshots[snapshots.length - 1];
+            const firstSnapshot = snapshots[0];
+            const overallValueChange = latestSnapshot.totalValue - firstSnapshot.totalValue;
+            const overallValueChangePct = firstSnapshot.totalValue > 0
+              ? ((overallValueChange / firstSnapshot.totalValue) * 100).toFixed(1)
+              : null;
+            const latestTopHolding = latestSnapshot.weights.length > 0
+              ? latestSnapshot.weights.reduce((top, current) =>
+                  current.weight > top.weight ? current : top
+                )
+              : null;
 
-          <div className="summary-card">
-            <div className="summary-label">Overall Change</div>
-            <div
-              className={`summary-value ${
-                overallValueChange >= 0 ? 'summary-positive' : 'summary-negative'
-              }`}
-            >
-              {overallValueChange >= 0 ? '+' : ''}
-              ${overallValueChange.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-            </div>
-            <div className="summary-subtext">
-              {overallValueChangePct}% since first snapshot
-            </div>
-          </div>
+            return (
+              <section className="summary-grid">
+                <div className="summary-card">
+                  <div className="summary-label">Latest Portfolio Value</div>
+                  <div className="summary-value">
+                    ${latestSnapshot.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </div>
+                  <div className="summary-subtext">
+                    {new Date(latestSnapshot.date).toLocaleDateString()}
+                  </div>
+                </div>
 
-          <div className="summary-card">
-            <div className="summary-label">Snapshots Recorded</div>
-            <div className="summary-value">{snapshots.length}</div>
-            <div className="summary-subtext">Total saved history points</div>
-          </div>
+                <div className="summary-card">
+                  <div className="summary-label">Overall Change</div>
+                  <div className={`summary-value ${overallValueChange >= 0 ? 'summary-positive' : 'summary-negative'}`}>
+                    {overallValueChange >= 0 ? '+' : ''}
+                    ${overallValueChange.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </div>
+                  <div className="summary-subtext">
+                    {overallValueChangePct}% since first snapshot
+                  </div>
+                </div>
 
-          <div className="summary-card">
-            <div className="summary-label">Top Holding (Latest)</div>
-            <div className="summary-value">{latestTopHolding?.company || '-'}</div>
-            <div className="summary-subtext">
-              {latestTopHolding ? `${latestTopHolding.weight}% of portfolio` : 'No data'}
-            </div>
-          </div>
-        </section>
-      )}
+                <div className="summary-card">
+                  <div className="summary-label">Snapshots Recorded</div>
+                  <div className="summary-value">{snapshots.length}</div>
+                  <div className="summary-subtext">Total saved history points</div>
+                </div>
+
+                <div className="summary-card">
+                  <div className="summary-label">Top Holding (Latest)</div>
+                  <div className="summary-value">{latestTopHolding?.company || '-'}</div>
+                  <div className="summary-subtext">
+                    {latestTopHolding ? `${latestTopHolding.weight}% of portfolio` : 'No data'}
+                  </div>
+                </div>
+              </section>
+            );
+          })()}
+
       <div className="actions-row">
         <button
           onClick={handleReset}
@@ -453,56 +525,74 @@ function App() {
                     </span>
 
                     {valueDelta !== null && (
-                      <span
-                        className={`value-badge ${valueDelta >= 0 ? 'positive' : 'negative'}`}
-                      >
-                        {valueDelta >= 0 ? '+' : ''}
-                        {valueDelta.toLocaleString(undefined, {
-                          maximumFractionDigits: 0,
-                        })}{' '}
-                        ({valuePct}%)
+                      <span style={{
+                        color: valueDelta >= 0 ? 'green' : 'red',
+                        background: valueDelta >= 0 ? '#e6f9ec' : '#fdecea',
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        fontSize: '0.85em',
+                        fontWeight: 600
+                      }}>
+                        {valueDelta >= 0 ? '▲' : '▼'} ${Math.abs(valueDelta).toLocaleString(undefined, { maximumFractionDigits: 0 })} ({valuePct}%)
                       </span>
                     )}
 
+                    {i === 0 && (
+                      <span style={{ fontSize: '0.8em', color: '#999' }}>baseline</span>
+                    )}
+
                     <button
-                      onClick={() => handleDelete(s._id)}
-                      className="button button-secondary snapshot-delete"
+                      type="button"
+                      onClick={() => handleEdit(s)}
+                      style={{
+                        marginLeft: 'auto',
+                        background: 'none',
+                        border: 'none',
+                        color: '#2563eb',
+                        cursor: 'pointer',
+                        fontWeight: 600
+                      }}
                     >
-                      Delete
+                      Edit
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(s._id)}
+                      style={{
+                        color: 'red',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ❌
                     </button>
                   </div>
 
-                  <div className="snapshot-meta">
-                    <div className="snapshot-meta-line">
-                      Top holdings:{' '}
-                      {s.weights
-                        .slice(0, 3)
-                        .map((w) => `${w.company} (${w.weight}%)`)
-                        .join(', ')}
-                    </div>
-
-                    {movers.length > 0 && (
-                      <div className="snapshot-meta-line">
-                        Biggest movers:{' '}
-                        {movers.map((m, index) => (
-                          <span key={m.company}>
-                            <span
-                              className={
-                                m.delta > 0
-                                  ? 'mover-positive'
-                                  : m.delta < 0
-                                    ? 'mover-negative'
-                                    : 'mover-neutral'
-                              }
-                            >
-                              {m.company} {m.delta > 0 ? '+' : ''}{m.delta}%
-                            </span>
-                            {index < movers.length - 1 ? ', ' : ''}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                  <div style={{ fontSize: '0.85em', marginTop: 4, color: '#555' }}>
+                    Top: {s.weights.slice(0, 3).map(w => `${w.company} (${w.weight}%)`).join(', ')}
                   </div>
+
+                  {movers.length > 0 && (
+                    <div style={{ fontSize: '0.82em', marginTop: 4, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ color: '#888' }}>Weight movers:</span>
+                      {movers.map(m => (
+                        <span
+                          key={m.company}
+                          style={{
+                            color: m.delta >= 0 ? 'green' : 'red',
+                            background: m.delta >= 0 ? '#e6f9ec' : '#fdecea',
+                            padding: '1px 6px',
+                            borderRadius: 10,
+                            fontWeight: 500
+                          }}
+                        >
+                          {m.delta >= 0 ? '▲' : '▼'} {m.company} ({m.delta > 0 ? '+' : ''}{m.delta}%)
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </li>
               );
             })}

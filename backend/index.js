@@ -30,6 +30,7 @@ app.post('/api/snapshots', async (req, res) => {
     if (!date || typeof totalValue !== 'number' || totalValue < 0) {
       return res.status(400).json({ error: 'Valid date and non-negative totalValue required' });
     }
+
     if (!Array.isArray(weights) || weights.length === 0) {
       return res.status(400).json({ error: 'Weights must be a non-empty array' });
     }
@@ -43,10 +44,41 @@ app.post('/api/snapshots', async (req, res) => {
   }
 });
 
+app.put('/api/snapshots/:id', async (req, res) => {
+  try {
+    const { date, totalValue, weights } = req.body;
+
+    if (!date || typeof totalValue !== 'number' || totalValue < 0) {
+      return res.status(400).json({ error: 'Valid date and non-negative totalValue required' });
+    }
+
+    if (!Array.isArray(weights) || weights.length === 0) {
+      return res.status(400).json({ error: 'Weights must be a non-empty array' });
+    }
+
+    const updated = await PortfolioSnapshot.findByIdAndUpdate(
+      req.params.id,
+      { date, totalValue, weights },
+      { new: true, runValidators: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Snapshot not found' });
+    }
+
+    res.json(updated);
+  } catch (err) {
+    console.error('PUT /snapshots/:id error:', err);
+    res.status(500).json({ error: 'Failed to update snapshot' });
+  }
+});
+
 app.delete('/api/snapshots/:id', async (req, res) => {
   try {
     const result = await PortfolioSnapshot.findByIdAndDelete(req.params.id);
-    if (!result) return res.status(404).json({ error: 'Snapshot not found' });
+    if (!result) {
+      return res.status(404).json({ error: 'Snapshot not found' });
+    }
     res.json({ message: 'Snapshot deleted' });
   } catch (err) {
     console.error('DELETE /snapshots error:', err);
