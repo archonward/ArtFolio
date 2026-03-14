@@ -1,5 +1,5 @@
 .App {
-  padding: 20px;
+  padding: 28px 20px 40px;
   max-width: 900px;
   margin: 0 auto;
   color: #1f2937;
@@ -9,11 +9,29 @@
   margin-bottom: 24px;
 }
 
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(191, 219, 254, 0.55), transparent 32%),
+    radial-gradient(circle at top right, rgba(224, 242, 254, 0.85), transparent 28%),
+    linear-gradient(180deg, #f4fbff 0%, #eef7ff 45%, #eaf4ff 100%);
+  background-attachment: fixed;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #1f2937;
+}
+
 .feedback-banner {
   margin-bottom: 16px;
   padding: 12px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid;
+  box-shadow: 0 4px 14px rgba(148, 184, 255, 0.08);
 }
 
 .feedback-banner.error {
@@ -29,11 +47,13 @@
 }
 
 .section-card {
-  background: #f9f9f9;
+  background: rgba(255, 255, 255, 0.88);
   padding: 20px;
-  border-radius: 8px;
+  border-radius: 14px;
   margin-bottom: 30px;
-  border: 1px solid #ececec;
+  border: 1px solid rgba(191, 219, 254, 0.7);
+  box-shadow: 0 10px 30px rgba(148, 184, 255, 0.12);
+  backdrop-filter: blur(6px);
 }
 
 .form-row {
@@ -107,6 +127,7 @@
   cursor: pointer;
   font: inherit;
   font-weight: 500;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
 }
 
 .button:disabled {
@@ -134,6 +155,11 @@
   padding: 4px 8px;
 }
 
+.button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(59, 130, 246, 0.12);
+}
+
 .actions-row {
   margin-bottom: 20px;
   display: flex;
@@ -157,9 +183,10 @@
 .snapshot-card {
   margin-bottom: 12px;
   padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  background: white;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 6px 18px rgba(148, 184, 255, 0.08);
 }
 
 .snapshot-header {
@@ -223,11 +250,12 @@
 }
 
 .summary-card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(191, 219, 254, 0.75);
+  border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 24px rgba(148, 184, 255, 0.1);
+  backdrop-filter: blur(4px);
 }
 
 .summary-label {
