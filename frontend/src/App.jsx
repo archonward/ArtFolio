@@ -1,7 +1,8 @@
 import './App.css';
 import LineGraph from './components/LineGraph';
 import { useState, useEffect } from 'react';
-import ExcelJS from 'exceljs';
+import { ExcelParser } from './utils/ExcelParser';
+import { PortfolioSnapshot } from './models/PortfolioSnapshot';
 
 function App() {
   // Form state
@@ -16,31 +17,25 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  // Load snapshots on mount
   useEffect(() => {
     const loadSnapshots = async () => {
       try {
         const res = await fetch('/api/snapshots');
-
-        if (!res.ok) {
-          const errText = await res.text().catch(() => 'Unknown error');
-          throw new Error(`Failed to load: ${res.status} - ${errText}`);
-        }
-
+        if (!res.ok) throw new Error('Failed to load');
         const data = await res.json();
-        console.log(' Loaded snapshots:', data); // Debug log
         setSnapshots(data);
-
       } catch (err) {
-        console.error(' Load failed:', err);
-        alert('Could not load data. Check backend connection.');
+        console.error('Load failed:', err);
+        alert(' Could not load data. Check backend.');
       } finally {
         setLoading(false);
       }
     };
-
     loadSnapshots();
   }, []);
 
+  // Parse Excel using OOP class
   const handleFileChange = async (e) => {
     const selectedFile = e.target.files[0];
     setFile(selectedFile);
@@ -50,69 +45,37 @@ function App() {
     if (!selectedFile) return;
 
     try {
-      // Read file as ArrayBuffer
-      const arrayBuffer = await selectedFile.arrayBuffer();
-
-      // Load workbook with ExcelJS
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(arrayBuffer);
-
-      // Get first worksheet
-      const worksheet = workbook.getWorksheet(1);
-      if (!worksheet) throw new Error('No worksheet found in file');
-
-      const parsed = [];
-
-      // Iterate through rows (ExcelJS is 1-indexed)
-      worksheet.eachRow((row, rowNumber) => {
-        // Skip header row
-        if (rowNumber === 1) return;
-
-        const companyCell = row.getCell(1).value;
-        const weightCell = row.getCell(2).value;
-
-        // Validate and clean company name
-        if (!companyCell || typeof companyCell !== 'string') return;
-        const company = companyCell.trim();
-        if (!company || /total|sum/i.test(company)) return;
-
-        // Validate and parse weight
-        const weight = parseFloat(weightCell);
-        if (isNaN(weight) || weight < 0) return;
-
-        parsed.push({ company, weight });
-      });
-
-      if (parsed.length === 0) {
-        throw new Error('No valid company/weight data found.');
-      }
-
-      // Sort by weight descending
-      parsed.sort((a, b) => b.weight - a.weight);
-      setWeights(parsed);
-
+      const parsedWeights = await ExcelParser.parse(selectedFile);
+      setWeights(parsedWeights);
     } catch (err) {
       console.error('Parse error:', err);
-      setParsingError('Failed to parse Excel. Check format and ensure columns: Company (A), Weight % (B)');
+      setParsingError(' Failed to parse Excel. Ensure columns: A=Company, B=Weight %');
     }
   };
 
+  // Submit using OOP validation
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (submitting) return;
 
-    if (!date) return alert('Please select a date.');
     const valueNum = parseFloat(totalValue);
+    if (!date) return alert('Please select a date.');
     if (isNaN(valueNum) || valueNum <= 0) return alert('Valid total value required.');
     if (weights.length === 0) return alert('Upload and parse an Excel file first.');
 
-    setSubmitting(true);
+    const snapshotData = { date, totalValue: valueNum, weights };
+    const snapshot = new PortfolioSnapshot(snapshotData);
 
+    if (!snapshot.isValid()) {
+      return alert('Invalid snapshot data. Please check inputs.');
+    }
+
+    setSubmitting(true);
     try {
       const res = await fetch('/api/snapshots', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, totalValue: valueNum, weights }),
+        body: JSON.stringify(snapshotData),
       });
 
       if (!res.ok) {
@@ -121,14 +84,17 @@ function App() {
       }
 
       const newSnapshot = await res.json();
-      setSnapshots((prev) => [...prev, newSnapshot].sort((a, b) => new Date(a.date) - new Date(b.date)));
-      
+      setSnapshots(prev =>
+        [...prev, newSnapshot].sort((a, b) => new Date(a.date) - new Date(b.date))
+      );
+
+      // Reset form
       setTotalValue('');
       setFile(null);
       setWeights([]);
       setDate(new Date().toISOString().split('T')[0]);
     } catch (err) {
-      alert(err.message);
+      alert(` ${err.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -139,7 +105,7 @@ function App() {
     try {
       const res = await fetch(`/api/snapshots/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Delete failed');
-      setSnapshots((prev) => prev.filter(s => s._id !== id));
+      setSnapshots(prev => prev.filter(s => s._id !== id));
     } catch (err) {
       alert('Delete failed.');
     }
@@ -153,27 +119,24 @@ function App() {
     }
   };
 
-  const totalValueData = snapshots.map(s => ({
-    date: s.date,
-    value: s.totalValue
-  }));
+  // Prepare graph data
+  const totalValueData = snapshots.map(s => ({ date: s.date, value: s.totalValue }));
 
   const weightSeries = {};
   snapshots.forEach(snapshot => {
     snapshot.weights.forEach(w => {
       if (!weightSeries[w.company]) weightSeries[w.company] = [];
-      weightSeries[w.company].push({
-        date: snapshot.date,
-        weight: w.weight
-      });
+      weightSeries[w.company].push({ date: snapshot.date, weight: w.weight });
     });
   });
 
-  if (loading) return <div className="App" style={{ padding: 20 }}>Loading...</div>;
+  if (loading) {
+    return <div className="App" style={{ padding: 20 }}>Loading...</div>;
+  }
 
   return (
     <div className="App" style={{ padding: 20, maxWidth: 900, margin: '0 auto' }}>
-      <h1>ArtFolio Tracker</h1>
+      <h1>📈 ArtFolio Tracker</h1>
 
       <section style={{ background: '#f9f9f9', padding: 20, borderRadius: 8, marginBottom: 30 }}>
         <h2>Add Portfolio Snapshot</h2>
@@ -237,7 +200,7 @@ function App() {
               cursor: submitting ? 'not-allowed' : 'pointer'
             }}
           >
-            {submitting ? 'Saving...' : 'Save Snapshot'}
+            {submitting ? 'Saving...' : ' Save Snapshot'}
           </button>
         </form>
       </section>
@@ -247,41 +210,98 @@ function App() {
           onClick={handleReset}
           style={{ padding: '8px 16px', backgroundColor: '#f44336', color: 'white', border: 'none', marginRight: 10 }}
         >
-          Reset All
+           Reset All
         </button>
         <span>{snapshots.length} snapshot(s)</span>
       </div>
 
       {snapshots.length > 0 && (
         <>
-          <h2>Total Portfolio Value Over Time</h2>
           <LineGraph data={totalValueData} type="value" />
+          <LineGraph data={weightSeries} type="weight" />
 
-          <h2>Company Weight Evolution Over Time</h2>
-          <LineGraph data={weightSeries} type="weight" yDomain={[0, 15]} />
-        </>
-      )}
-
-      {snapshots.length > 0 && (
-        <>
-          <h2>Snapshots</h2>
+          {/* Snapshot List */}
+          <h2>📅 Snapshots</h2>
           <ul style={{ listStyle: 'none', padding: 0 }}>
-            {snapshots.map((s) => (
-              <li key={s._id} style={{ marginBottom: 12, padding: 12, border: '1px solid #ddd', borderRadius: 4 }}>
-                <strong>{new Date(s.date).toLocaleDateString()}</strong> — 
-                ${s.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })} — 
-                {s.weights.length} companies
-                <button
-                  onClick={() => handleDelete(s._id)}
-                  style={{ marginLeft: 10, color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}
-                >
-                  Delete
-                </button>
-                <div style={{ fontSize: '0.85em', marginTop: 4 }}>
-                  Top: {s.weights.slice(0, 3).map(w => `${w.company} (${w.weight}%)`).join(', ')}
-                </div>
-              </li>
-            ))}
+            {snapshots.map((s, i) => {
+              const prev = snapshots[i - 1];
+
+              // Value delta
+              const valueDelta = prev ? s.totalValue - prev.totalValue : null;
+              const valuePct = prev ? ((valueDelta / prev.totalValue) * 100).toFixed(1) : null;
+
+              // Top weight movers
+              const movers = prev
+                ? s.weights
+                    .map(w => {
+                      const prevW = prev.weights.find(p => p.company === w.company);
+                      return prevW ? { company: w.company, delta: +(w.weight - prevW.weight).toFixed(2) } : null;
+                    })
+                    .filter(Boolean)
+                    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+                    .slice(0, 2)
+                : [];
+
+              return (
+                <li key={s._id} style={{ marginBottom: 12, padding: 12, border: '1px solid #ddd', borderRadius: 4 }}>
+
+                  {/* Row 1: Date, value, delete */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <strong>{new Date(s.date).toLocaleDateString()}</strong>
+                    <span>— ${s.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+
+                    {/* Value delta badge */}
+                    {valueDelta !== null && (
+                      <span style={{
+                        color: valueDelta >= 0 ? 'green' : 'red',
+                        background: valueDelta >= 0 ? '#e6f9ec' : '#fdecea',
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        fontSize: '0.85em',
+                        fontWeight: 600
+                      }}>
+                        {valueDelta >= 0 ? '▲' : '▼'} ${Math.abs(valueDelta).toLocaleString(undefined, { maximumFractionDigits: 0 })} ({valuePct}%)
+                      </span>
+                    )}
+
+                    {i === 0 && (
+                      <span style={{ fontSize: '0.8em', color: '#999' }}>baseline</span>
+                    )}
+
+                    <button
+                      onClick={() => handleDelete(s._id)}
+                      style={{ marginLeft: 'auto', color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}
+                    >
+                      ❌
+                    </button>
+                  </div>
+
+                  {/* Row 2: Top holdings */}
+                  <div style={{ fontSize: '0.85em', marginTop: 4, color: '#555' }}>
+                    Top: {s.weights.slice(0, 3).map(w => `${w.company} (${w.weight}%)`).join(', ')}
+                  </div>
+
+                  {/* Row 3: Weight movers */}
+                  {movers.length > 0 && (
+                    <div style={{ fontSize: '0.82em', marginTop: 4, display: 'flex', gap: 8 }}>
+                      <span style={{ color: '#888' }}>Weight movers:</span>
+                      {movers.map(m => (
+                        <span key={m.company} style={{
+                          color: m.delta >= 0 ? 'green' : 'red',
+                          background: m.delta >= 0 ? '#e6f9ec' : '#fdecea',
+                          padding: '1px 6px',
+                          borderRadius: 10,
+                          fontWeight: 500
+                        }}>
+                          {m.delta >= 0 ? '▲' : '▼'} {m.company} ({m.delta > 0 ? '+' : ''}{m.delta}%)
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                </li>
+              );
+            })}
           </ul>
         </>
       )}
