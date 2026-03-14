@@ -1,38 +1,216 @@
 .App {
-  text-align: center;
+  padding: 20px;
+  max-width: 900px;
+  margin: 0 auto;
+  color: #1f2937;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.app-title {
+  margin-bottom: 24px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.feedback-banner {
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
+.feedback-banner.error {
+  background-color: #fdecea;
+  color: #b42318;
+  border-color: #f5c2c7;
+}
+
+.feedback-banner.success {
+  background-color: #e8f5e9;
+  color: #1b5e20;
+  border-color: #c8e6c9;
+}
+
+.section-card {
+  background: #f9f9f9;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+  border: 1px solid #ececec;
+}
+
+.form-row {
+  margin-bottom: 12px;
+}
+
+.form-label {
+  display: inline-block;
+  min-width: 190px;
+  font-weight: 500;
+}
+
+.form-input {
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.form-input.date-input {
+  min-width: 170px;
+}
+
+.form-input.value-input {
+  width: 220px;
+}
+
+.file-name {
+  margin-left: 8px;
+  color: green;
+  font-weight: 500;
+}
+
+.helper-error {
+  color: #b42318;
+  margin-top: 8px;
+}
+
+.parsed-summary {
+  margin-top: 14px;
+  margin-bottom: 18px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #fff;
+}
+
+.parsed-summary-text {
+  margin: 8px 0 6px 0;
+}
+
+.warning-text {
+  color: #b42318;
+  margin: 6px 0;
+}
+
+.preview-list {
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px solid #eee;
+  padding: 8px 20px;
+  margin-top: 10px;
+  border-radius: 6px;
+  background: #fcfcfc;
+}
+
+.button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 500;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+}
+
+.button-primary {
+  background-color: #4caf50;
   color: white;
 }
 
-.App-link {
-  color: #61dafb;
+.button-primary:disabled {
+  background-color: #ccc;
+  color: white;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.button-danger {
+  background-color: #f44336;
+  color: white;
+}
+
+.button-secondary {
+  background-color: #eee;
+  color: #222;
+  padding: 4px 8px;
+}
+
+.actions-row {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.snapshot-count {
+  color: #444;
+}
+
+.loading-state {
+  padding: 20px;
+}
+
+.snapshot-list {
+  list-style: none;
+  padding: 0;
+}
+
+.snapshot-card {
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+}
+
+.snapshot-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.snapshot-delete {
+  margin-left: auto;
+}
+
+.value-badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
+.value-badge.positive {
+  color: green;
+  background: #e6f9ec;
+}
+
+.value-badge.negative {
+  color: red;
+  background: #fdecea;
+}
+
+.snapshot-meta {
+  margin-top: 8px;
+  font-size: 0.92em;
+  color: #444;
+}
+
+.snapshot-meta-line + .snapshot-meta-line {
+  margin-top: 4px;
+}
+
+.mover-positive {
+  color: green;
+  font-weight: 600;
+}
+
+.mover-negative {
+  color: red;
+  font-weight: 600;
+}
+
+.mover-neutral {
+  color: #444;
+  font-weight: 600;
 }
