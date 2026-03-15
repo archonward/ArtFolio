@@ -8,6 +8,11 @@ app.use(cors());
 app.use(express.json());
 
 const PortfolioSnapshot = require('./models/PortfolioSnapshot');
+const {
+  archiveLatestClose,
+  archiveLatestForAllSupportedSymbols,
+  getArchivedHistory,
+} = require('./services/marketCloseService');
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB connected'))
@@ -93,6 +98,48 @@ app.delete('/api/snapshots', async (req, res) => {
   } catch (err) {
     console.error('DELETE ALL error:', err);
     res.status(500).json({ error: 'Failed to reset' });
+  }
+});
+
+app.get('/api/market-closes', async (req, res) => {
+  try {
+    const symbol = req.query.symbol;
+
+    if (!symbol) {
+      return res.status(400).json({ error: 'Query parameter "symbol" is required.' });
+    }
+
+    const history = await getArchivedHistory(symbol, 30);
+    res.json(history);
+  } catch (err) {
+    console.error('GET /api/market-closes error:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch market close history.' });
+  }
+});
+
+app.post('/api/market-closes/fetch-latest', async (req, res) => {
+  try {
+    const { symbol } = req.body;
+
+    if (!symbol) {
+      return res.status(400).json({ error: 'Request body must include "symbol".' });
+    }
+
+    const result = await archiveLatestClose(symbol);
+    res.json(result);
+  } catch (err) {
+    console.error('POST /api/market-closes/fetch-latest error:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch latest market close.' });
+  }
+});
+
+app.post('/api/market-closes/fetch-all', async (req, res) => {
+  try {
+    const results = await archiveLatestForAllSupportedSymbols();
+    res.json({ results });
+  } catch (err) {
+    console.error('POST /api/market-closes/fetch-all error:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch all market closes.' });
   }
 });
 
