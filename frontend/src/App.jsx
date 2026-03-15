@@ -6,6 +6,7 @@ import SnapshotList from './components/SnapshotList';
 import SnapshotForm from './components/SnapshotForm';
 import MarketClosesSection from './components/MarketClosesSection';
 import SidebarNav from './components/SidebarNav';
+import HowToInvestPage from './components/HowToInvestPage';
 import { ExcelParser } from './utils/ExcelParser';
 import {
   getTotalParsedWeight,
@@ -321,6 +322,10 @@ function App() {
               onFetchLatest={handleFetchLatestMarket}
               onFetchAll={handleFetchAllMarkets}
             />
+          )}
+
+          {currentPage === 'investing' && (
+            <HowToInvestPage />
           )}
         </div>
       </main>
