@@ -5,6 +5,7 @@ import SummaryCards from './components/SummaryCards';
 import SnapshotList from './components/SnapshotList';
 import SnapshotForm from './components/SnapshotForm';
 import MarketClosesSection from './components/MarketClosesSection';
+import SidebarNav from './components/SidebarNav';
 import { ExcelParser } from './utils/ExcelParser';
 import {
   getTotalParsedWeight,
@@ -46,6 +47,8 @@ function App() {
     handleDelete,
     handleReset,
   } = useSnapshotManager();
+
+  const [currentPage, setCurrentPage] = useState('home');
 
   const [marketData, setMarketData] = useState({
     SPY: [],
@@ -187,8 +190,12 @@ function App() {
 
       const data = await fetchAllLatestMarketCloses();
 
-      const successful = Array.isArray(data.results) ? data.results.filter((item) => item.success && item.record) : [];
-      const failures = Array.isArray(data.results) ? data.results.filter((item) => !item.success) : [];
+      const successful = Array.isArray(data.results)
+        ? data.results.filter((item) => item.success && item.record)
+        : [];
+      const failures = Array.isArray(data.results)
+        ? data.results.filter((item) => !item.success)
+        : [];
 
       setMarketData((prev) => {
         const next = { ...prev };
@@ -237,74 +244,86 @@ function App() {
   }
 
   return (
-    <div className="App">
-      <h1 className="app-title">📈 ArtFolio Tracker</h1>
+    <div className="app-shell">
+      <SidebarNav currentPage={currentPage} onPageChange={setCurrentPage} />
 
-      <MarketClosesSection
-        marketData={marketData}
-        marketLoading={marketLoading}
-        marketFetching={marketFetching}
-        marketErrors={marketErrors}
-        onFetchLatest={handleFetchLatestMarket}
-        onFetchAll={handleFetchAllMarkets}
-      />
+      <main className="app-main">
+        <div className="App">
+          <h1 className="app-title">📈 ArtFolio Tracker</h1>
 
-      {submitError && (
-        <div className="feedback-banner error">
-          {submitError}
+          {currentPage === 'home' && (
+            <>
+              {submitError && (
+                <div className="feedback-banner error">
+                  {submitError}
+                </div>
+              )}
+
+              {submitSuccess && (
+                <div className="feedback-banner success">
+                  {submitSuccess}
+                </div>
+              )}
+
+              <SnapshotForm
+                editingSnapshotId={editingSnapshotId}
+                date={date}
+                setDate={setDate}
+                totalValue={totalValue}
+                setTotalValue={setTotalValue}
+                fileInputRef={fileInputRef}
+                file={file}
+                weights={weights}
+                parsingError={parsingError}
+                totalParsedWeight={totalParsedWeight}
+                duplicateCompanies={duplicateCompanies}
+                submitting={submitting}
+                handleFileChange={handleFileChange}
+                handleSubmit={handleSubmit}
+                resetForm={resetForm}
+                setSubmitError={setSubmitError}
+                setSubmitSuccess={setSubmitSuccess}
+              />
+
+              <SummaryCards snapshots={snapshots} />
+
+              <div className="actions-row">
+                <button
+                  onClick={handleReset}
+                  className="button button-danger"
+                >
+                  Reset All
+                </button>
+                <span className="snapshot-count">{snapshots.length} snapshot(s)</span>
+              </div>
+
+              {snapshots.length > 0 && (
+                <>
+                  <LineGraph data={totalValueData} type="value" />
+                  <LineGraph data={weightSeries} type="weight" />
+
+                  <SnapshotList
+                    snapshots={snapshots}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
+                </>
+              )}
+            </>
+          )}
+
+          {currentPage === 'markets' && (
+            <MarketClosesSection
+              marketData={marketData}
+              marketLoading={marketLoading}
+              marketFetching={marketFetching}
+              marketErrors={marketErrors}
+              onFetchLatest={handleFetchLatestMarket}
+              onFetchAll={handleFetchAllMarkets}
+            />
+          )}
         </div>
-      )}
-
-      {submitSuccess && (
-        <div className="feedback-banner success">
-          {submitSuccess}
-        </div>
-      )}
-
-      <SnapshotForm
-        editingSnapshotId={editingSnapshotId}
-        date={date}
-        setDate={setDate}
-        totalValue={totalValue}
-        setTotalValue={setTotalValue}
-        fileInputRef={fileInputRef}
-        file={file}
-        weights={weights}
-        parsingError={parsingError}
-        totalParsedWeight={totalParsedWeight}
-        duplicateCompanies={duplicateCompanies}
-        submitting={submitting}
-        handleFileChange={handleFileChange}
-        handleSubmit={handleSubmit}
-        resetForm={resetForm}
-        setSubmitError={setSubmitError}
-        setSubmitSuccess={setSubmitSuccess}
-      />
-
-      <SummaryCards snapshots={snapshots} />
-
-      <div className="actions-row">
-        <button
-          onClick={handleReset}
-          className="button button-danger"
-        >
-          Reset All
-        </button>
-        <span className="snapshot-count">{snapshots.length} snapshot(s)</span>
-      </div>
-
-      {snapshots.length > 0 && (
-        <>
-          <LineGraph data={totalValueData} type="value" />
-          <LineGraph data={weightSeries} type="weight" />
-
-          <SnapshotList
-            snapshots={snapshots}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
-        </>
-      )}
+      </main>
     </div>
   );
 }
