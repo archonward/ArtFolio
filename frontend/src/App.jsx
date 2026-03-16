@@ -267,6 +267,30 @@ function App() {
                 </div>
               )}
 
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 12,
+                    marginBottom: 14,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <span style={{ color: '#4b5563', fontSize: '0.95rem' }}>
+                    Need the correct upload format?
+                  </span>
+
+                  <a
+                    href="/DataTemplate.xlsx"
+                    download
+                    className="button button-muted"
+                    style={{ textDecoration: 'none' }}
+                  >
+                    Download Excel Template
+                  </a>
+                </div>
+
               <SnapshotForm
                 editingSnapshotId={editingSnapshotId}
                 date={date}

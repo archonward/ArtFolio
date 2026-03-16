@@ -1,5 +1,7 @@
+import { buildApiUrl } from './api';
+
 export async function fetchSnapshots() {
-  const res = await fetch('/api/snapshots');
+  const res = await fetch(buildApiUrl('/api/snapshots'));
 
   if (!res.ok) {
     throw new Error('Failed to load snapshots.');
@@ -9,7 +11,7 @@ export async function fetchSnapshots() {
 }
 
 export async function createSnapshot(snapshotData) {
-  const res = await fetch('/api/snapshots', {
+  const res = await fetch(buildApiUrl('/api/snapshots'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(snapshotData),
@@ -24,7 +26,7 @@ export async function createSnapshot(snapshotData) {
 }
 
 export async function updateSnapshot(snapshotId, snapshotData) {
-  const res = await fetch(`/api/snapshots/${snapshotId}`, {
+  const res = await fetch(buildApiUrl(`/api/snapshots/${snapshotId}`), {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(snapshotData),
@@ -39,7 +41,7 @@ export async function updateSnapshot(snapshotId, snapshotData) {
 }
 
 export async function deleteSnapshot(snapshotId) {
-  const res = await fetch(`/api/snapshots/${snapshotId}`, {
+  const res = await fetch(buildApiUrl(`/api/snapshots/${snapshotId}`), {
     method: 'DELETE',
   });
 
@@ -49,7 +51,7 @@ export async function deleteSnapshot(snapshotId) {
 }
 
 export async function deleteAllSnapshots() {
-  const res = await fetch('/api/snapshots', {
+  const res = await fetch(buildApiUrl('/api/snapshots'), {
     method: 'DELETE',
   });
 
