@@ -1,5 +1,6 @@
 import './App.css';
 import { useEffect, useMemo, useState } from 'react';
+import CalendarPage from './components/CalendarPage';
 import LineGraph from './components/LineGraph';
 import SummaryCards from './components/SummaryCards';
 import SnapshotList from './components/SnapshotList';
@@ -322,6 +323,10 @@ function App() {
               onFetchLatest={handleFetchLatestMarket}
               onFetchAll={handleFetchAllMarkets}
             />
+          )}
+
+          {currentPage === 'calendar' && (
+            <CalendarPage />
           )}
 
           {currentPage === 'investing' && (
