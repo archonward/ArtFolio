@@ -1,103 +1,102 @@
 const MarketClose = require('../models/MarketClose');
 
-const SYMBOL_TO_STOOQ = {
-  SPY: 'spy.us',
-  QQQ: 'qqq.us',
+const SUPPORTED_SYMBOLS = {
+  SPY: 'SPY',
+  QQQ: 'QQQ',
 };
 
 function normalizeSymbol(symbol) {
   return String(symbol || '').trim().toUpperCase();
 }
 
-function getStooqCsvUrl(symbol) {
+function getYahooChartUrl(symbol) {
   const normalized = normalizeSymbol(symbol);
-  const stooqSymbol = SYMBOL_TO_STOOQ[normalized];
 
-  if (!stooqSymbol) {
+  if (!SUPPORTED_SYMBOLS[normalized]) {
     throw new Error(`Unsupported symbol: ${symbol}`);
   }
 
-  return `https://stooq.com/q/d/l/?s=${stooqSymbol}&i=d`;
+  return `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(normalized)}?interval=1d&range=10d`;
 }
 
-function parseCsvLine(line) {
-  return line.split(',').map((part) => part.trim());
+function toUtcDateOnly(unixSeconds) {
+  const date = new Date(unixSeconds * 1000);
+  const utcDateOnly = new Date(Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate()
+  ));
+  return utcDateOnly;
 }
 
-function toUtcDateOnly(dateString) {
-  const date = new Date(`${dateString}T00:00:00.000Z`);
-  if (Number.isNaN(date.getTime())) {
-    throw new Error(`Invalid market date received: ${dateString}`);
-  }
-  return date;
-}
-
-async function fetchLatestCloseFromStooq(symbol) {
+async function fetchLatestCloseFromYahoo(symbol) {
   const normalized = normalizeSymbol(symbol);
-  const url = getStooqCsvUrl(normalized);
+  const url = getYahooChartUrl(normalized);
 
   const response = await fetch(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0',
-      'Accept': 'text/csv,text/plain;q=0.9,*/*;q=0.8',
+      'Accept': 'application/json,text/plain,*/*',
     },
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch ${normalized} close data from Stooq.`);
+    throw new Error(`Failed to fetch ${normalized} close data from Yahoo Finance.`);
   }
 
-  const csvText = await response.text();
-  const lines = csvText
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const data = await response.json();
 
-  if (lines.length < 2) {
-    throw new Error(`No historical rows returned for ${normalized}.`);
+  const result = data?.chart?.result?.[0];
+  const timestamps = result?.timestamp || [];
+  const closes = result?.indicators?.quote?.[0]?.close || [];
+
+  if (!result || timestamps.length === 0 || closes.length === 0) {
+    throw new Error(`No chart data returned for ${normalized}.`);
   }
 
-  const header = parseCsvLine(lines[0]).map((h) => h.toLowerCase());
-  const expectedHeader = ['date', 'open', 'high', 'low', 'close', 'volume'];
+  const validPoints = timestamps
+    .map((ts, index) => ({
+      timestamp: ts,
+      close: closes[index],
+    }))
+    .filter((point) => typeof point.close === 'number' && !Number.isNaN(point.close));
 
-  const headerLooksValid = expectedHeader.every((field, index) => header[index] === field);
-  if (!headerLooksValid) {
-    throw new Error(`Unexpected CSV format returned for ${normalized}.`);
+  if (validPoints.length === 0) {
+    throw new Error(`No valid closing prices returned for ${normalized}.`);
   }
 
-  const latestRow = parseCsvLine(lines[lines.length - 1]);
-  const previousRow = lines.length >= 3 ? parseCsvLine(lines[lines.length - 2]) : null;
+  const latestPoint = validPoints[validPoints.length - 1];
+  const previousPoint =
+    validPoints.length >= 2 ? validPoints[validPoints.length - 2] : null;
 
-  const latestDateString = latestRow[0];
-  const latestClose = Number(latestRow[4]);
-  const previousClose = previousRow ? Number(previousRow[4]) : null;
-
-  if (!latestDateString || Number.isNaN(latestClose)) {
-    throw new Error(`Incomplete latest close data for ${normalized}.`);
-  }
+  const latestClose = Number(latestPoint.close.toFixed(2));
+  const previousClose =
+    previousPoint && typeof previousPoint.close === 'number'
+      ? Number(previousPoint.close.toFixed(2))
+      : null;
 
   const change =
-    previousClose != null && !Number.isNaN(previousClose)
+    previousClose != null
       ? Number((latestClose - previousClose).toFixed(2))
       : 0;
 
   const changePercent =
-    previousClose != null && !Number.isNaN(previousClose) && previousClose !== 0
+    previousClose != null && previousClose !== 0
       ? Number((((latestClose - previousClose) / previousClose) * 100).toFixed(2))
       : 0;
 
   return {
     symbol: normalized,
-    date: toUtcDateOnly(latestDateString),
-    close: Number(latestClose.toFixed(2)),
+    date: toUtcDateOnly(latestPoint.timestamp),
+    close: latestClose,
     change,
     changePercent,
-    source: 'stooq',
+    source: 'yahoo-finance',
   };
 }
 
 async function archiveLatestClose(symbol) {
-  const latest = await fetchLatestCloseFromStooq(symbol);
+  const latest = await fetchLatestCloseFromYahoo(symbol);
 
   const existing = await MarketClose.findOne({
     symbol: latest.symbol,
@@ -122,7 +121,7 @@ async function archiveLatestClose(symbol) {
 }
 
 async function archiveLatestForAllSupportedSymbols() {
-  const symbols = Object.keys(SYMBOL_TO_STOOQ);
+  const symbols = Object.keys(SUPPORTED_SYMBOLS);
   const results = [];
 
   for (const symbol of symbols) {
@@ -148,7 +147,7 @@ async function archiveLatestForAllSupportedSymbols() {
 async function getArchivedHistory(symbol, limit = 30) {
   const normalized = normalizeSymbol(symbol);
 
-  if (!SYMBOL_TO_STOOQ[normalized]) {
+  if (!SUPPORTED_SYMBOLS[normalized]) {
     throw new Error(`Unsupported symbol: ${symbol}`);
   }
 
