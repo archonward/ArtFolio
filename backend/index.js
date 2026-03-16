@@ -8,6 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 const PortfolioSnapshot = require('./models/PortfolioSnapshot');
+const CalendarEvent = require('./models/CalendarEvent');
 const {
   archiveLatestClose,
   archiveLatestForAllSupportedSymbols,
@@ -140,6 +141,90 @@ app.post('/api/market-closes/fetch-all', async (req, res) => {
   } catch (err) {
     console.error('POST /api/market-closes/fetch-all error:', err);
     res.status(500).json({ error: err.message || 'Failed to fetch all market closes.' });
+  }
+});
+
+app.get('/api/calendar-events', async (req, res) => {
+  try {
+    const events = await CalendarEvent.find().sort({ date: 1, createdAt: 1 });
+    res.json(events);
+  } catch (err) {
+    console.error('GET /calendar-events error:', err);
+    res.status(500).json({ error: 'Failed to fetch calendar events.' });
+  }
+});
+
+app.post('/api/calendar-events', async (req, res) => {
+  try {
+    const { title, body, date } = req.body;
+
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ error: 'Event title is required.' });
+    }
+
+    if (!date) {
+      return res.status(400).json({ error: 'Event date is required.' });
+    }
+
+    const event = new CalendarEvent({
+      title: String(title).trim(),
+      body: String(body || '').trim(),
+      date,
+    });
+
+    const saved = await event.save();
+    res.status(201).json(saved);
+  } catch (err) {
+    console.error('POST /calendar-events error:', err);
+    res.status(500).json({ error: 'Failed to create calendar event.' });
+  }
+});
+
+app.put('/api/calendar-events/:id', async (req, res) => {
+  try {
+    const { title, body, date } = req.body;
+
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ error: 'Event title is required.' });
+    }
+
+    if (!date) {
+      return res.status(400).json({ error: 'Event date is required.' });
+    }
+
+    const updated = await CalendarEvent.findByIdAndUpdate(
+      req.params.id,
+      {
+        title: String(title).trim(),
+        body: String(body || '').trim(),
+        date,
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Calendar event not found.' });
+    }
+
+    res.json(updated);
+  } catch (err) {
+    console.error('PUT /calendar-events/:id error:', err);
+    res.status(500).json({ error: 'Failed to update calendar event.' });
+  }
+});
+
+app.delete('/api/calendar-events/:id', async (req, res) => {
+  try {
+    const deleted = await CalendarEvent.findByIdAndDelete(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({ error: 'Calendar event not found.' });
+    }
+
+    res.json({ message: 'Calendar event deleted.' });
+  } catch (err) {
+    console.error('DELETE /calendar-events/:id error:', err);
+    res.status(500).json({ error: 'Failed to delete calendar event.' });
   }
 });
 
