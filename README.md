@@ -4,8 +4,8 @@ ArtFolio is a full-stack personal portfolio tracker built to record portfolio sn
 
 ## Live demo
 
-- Frontend: `Add your Vercel URL here`
-- Backend API: `Add your Render URL here`
+- Frontend: `https://art-folio-git-main-arthurteng-2207s-projects.vercel.app/`
+- Backend API: `https://artfolio-clwd.onrender.com`
 
 ## What the app does
 
