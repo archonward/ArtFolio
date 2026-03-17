@@ -9,6 +9,7 @@ import SidebarNav from './components/SidebarNav';
 import HowToInvestPage from './components/HowToInvestPage';
 import CalendarPage from './components/CalendarPage';
 import LoginPage from './components/LoginPage';
+import TopCompaniesPage from './components/TopCompaniesPage'
 import { ExcelParser } from './utils/ExcelParser';
 import {
   getTotalParsedWeight,
@@ -374,6 +375,10 @@ function App() {
               )}
             </>
           )}
+
+           {currentPage === 'companies' && (
+             <TopCompaniesPage />
+           )}
 
           {currentPage === 'markets' && (
             <MarketClosesSection
