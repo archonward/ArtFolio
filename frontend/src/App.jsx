@@ -1,6 +1,5 @@
 import './App.css';
 import { useEffect, useMemo, useState } from 'react';
-import CalendarPage from './components/CalendarPage';
 import LineGraph from './components/LineGraph';
 import SummaryCards from './components/SummaryCards';
 import SnapshotList from './components/SnapshotList';
@@ -8,6 +7,8 @@ import SnapshotForm from './components/SnapshotForm';
 import MarketClosesSection from './components/MarketClosesSection';
 import SidebarNav from './components/SidebarNav';
 import HowToInvestPage from './components/HowToInvestPage';
+import CalendarPage from './components/CalendarPage';
+import LoginPage from './components/LoginPage';
 import { ExcelParser } from './utils/ExcelParser';
 import {
   getTotalParsedWeight,
@@ -49,6 +50,10 @@ function App() {
     handleDelete,
     handleReset,
   } = useSnapshotManager();
+
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return sessionStorage.getItem('artfolio_logged_in') === 'true';
+  });
 
   const [currentPage, setCurrentPage] = useState('home');
 
@@ -241,6 +246,20 @@ function App() {
     }
   };
 
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('artfolio_logged_in');
+    setIsAuthenticated(false);
+    setCurrentPage('home');
+  };
+
+  if (!isAuthenticated) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  }
+
   if (loading) {
     return <div className="App loading-state">Loading...</div>;
   }
@@ -251,7 +270,25 @@ function App() {
 
       <main className="app-main">
         <div className="App">
-          <h1 className="app-title">📈 ArtFolio Tracker</h1>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 12,
+              flexWrap: 'wrap',
+            }}
+          >
+            <h1 className="app-title">📈 ArtFolio Tracker</h1>
+
+            <button
+              type="button"
+              className="button button-muted"
+              onClick={handleLogout}
+            >
+              Log Out
+            </button>
+          </div>
 
           {currentPage === 'home' && (
             <>
@@ -267,29 +304,29 @@ function App() {
                 </div>
               )}
 
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: 12,
-                    marginBottom: 14,
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <span style={{ color: '#4b5563', fontSize: '0.95rem' }}>
-                    Need the correct upload format?
-                  </span>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 12,
+                  marginBottom: 14,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <span style={{ color: '#4b5563', fontSize: '0.95rem' }}>
+                  Need the correct upload format?
+                </span>
 
-                  <a
-                    href="/DataTemplate.xlsx"
-                    download
-                    className="button button-muted"
-                    style={{ textDecoration: 'none' }}
-                  >
-                    Download Excel Template
-                  </a>
-                </div>
+                <a
+                  href="/DataTemplate.xlsx"
+                  download
+                  className="button button-muted"
+                  style={{ textDecoration: 'none' }}
+                >
+                  Download Excel Template
+                </a>
+              </div>
 
               <SnapshotForm
                 editingSnapshotId={editingSnapshotId}
