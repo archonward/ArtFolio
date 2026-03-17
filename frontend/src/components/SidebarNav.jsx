@@ -1,7 +1,6 @@
 import homeIcon from '../pictures/Artfolio_logo.png';
 import marketsIcon from '../pictures/Markets_Icon.png';
 import investingIcon from '../pictures/Investing_Icon.png';
-import calendarIcon from '../pictures/Calendar_Icon.png';
 
 function SidebarNav({ currentPage, onPageChange }) {
   const navItems = [
