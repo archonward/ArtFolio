@@ -1,17 +1,18 @@
-import { buildApiUrl } from './api';
+import { apiFetch } from './api';
 
 export async function fetchSnapshots() {
-  const res = await fetch(buildApiUrl('/api/snapshots'));
+  const res = await apiFetch('/api/snapshots');
 
   if (!res.ok) {
-    throw new Error('Failed to load snapshots.');
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to load snapshots.');
   }
 
   return res.json();
 }
 
 export async function createSnapshot(snapshotData) {
-  const res = await fetch(buildApiUrl('/api/snapshots'), {
+  const res = await apiFetch('/api/snapshots', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(snapshotData),
@@ -26,7 +27,7 @@ export async function createSnapshot(snapshotData) {
 }
 
 export async function updateSnapshot(snapshotId, snapshotData) {
-  const res = await fetch(buildApiUrl(`/api/snapshots/${snapshotId}`), {
+  const res = await apiFetch(`/api/snapshots/${snapshotId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(snapshotData),
@@ -41,21 +42,23 @@ export async function updateSnapshot(snapshotId, snapshotData) {
 }
 
 export async function deleteSnapshot(snapshotId) {
-  const res = await fetch(buildApiUrl(`/api/snapshots/${snapshotId}`), {
+  const res = await apiFetch(`/api/snapshots/${snapshotId}`, {
     method: 'DELETE',
   });
 
   if (!res.ok) {
-    throw new Error('Delete failed.');
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Delete failed.');
   }
 }
 
 export async function deleteAllSnapshots() {
-  const res = await fetch(buildApiUrl('/api/snapshots'), {
+  const res = await apiFetch('/api/snapshots', {
     method: 'DELETE',
   });
 
   if (!res.ok) {
-    throw new Error('Reset failed.');
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Reset failed.');
   }
 }

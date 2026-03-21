@@ -1,7 +1,7 @@
-import { buildApiUrl } from './api';
+import { apiFetch } from './api';
 
 export async function fetchCalendarEvents() {
-  const res = await fetch(buildApiUrl('/api/calendar-events'));
+  const res = await apiFetch('/api/calendar-events');
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -12,7 +12,7 @@ export async function fetchCalendarEvents() {
 }
 
 export async function createCalendarEvent(eventData) {
-  const res = await fetch(buildApiUrl('/api/calendar-events'), {
+  const res = await apiFetch('/api/calendar-events', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(eventData),
@@ -28,7 +28,7 @@ export async function createCalendarEvent(eventData) {
 }
 
 export async function updateCalendarEvent(eventId, eventData) {
-  const res = await fetch(buildApiUrl(`/api/calendar-events/${eventId}`), {
+  const res = await apiFetch(`/api/calendar-events/${eventId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(eventData),
@@ -44,7 +44,7 @@ export async function updateCalendarEvent(eventId, eventData) {
 }
 
 export async function deleteCalendarEvent(eventId) {
-  const res = await fetch(buildApiUrl(`/api/calendar-events/${eventId}`), {
+  const res = await apiFetch(`/api/calendar-events/${eventId}`, {
     method: 'DELETE',
   });
 

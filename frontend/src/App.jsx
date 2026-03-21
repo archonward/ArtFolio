@@ -10,6 +10,7 @@ import HowToInvestPage from './components/HowToInvestPage';
 import CalendarPage from './components/CalendarPage';
 import LoginPage from './components/LoginPage';
 import TopCompaniesPage from './components/TopCompaniesPage'
+import { isLoggedIn, logout } from './services/authService';
 import { ExcelParser } from './utils/ExcelParser';
 import {
   getTotalParsedWeight,
@@ -25,6 +26,10 @@ import {
 } from './services/marketCloseService';
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return isLoggedIn();
+  });
+
   const {
     fileInputRef,
     date,
@@ -50,11 +55,7 @@ function App() {
     handleSubmit,
     handleDelete,
     handleReset,
-  } = useSnapshotManager();
-
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return sessionStorage.getItem('artfolio_logged_in') === 'true';
-  });
+  } = useSnapshotManager(isAuthenticated);
 
   const [currentPage, setCurrentPage] = useState('home');
 
@@ -79,6 +80,10 @@ function App() {
   });
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
     const loadSymbolHistory = async (symbol) => {
       try {
         setMarketLoading((prev) => ({ ...prev, [symbol]: true }));
@@ -103,7 +108,7 @@ function App() {
 
     loadSymbolHistory('SPY');
     loadSymbolHistory('QQQ');
-  }, []);
+  }, [isAuthenticated]);
 
   const totalParsedWeight = useMemo(() => {
     return getTotalParsedWeight(weights);
@@ -252,7 +257,7 @@ function App() {
   };
 
   const handleLogout = () => {
-    sessionStorage.removeItem('artfolio_logged_in');
+    logout();
     setIsAuthenticated(false);
     setCurrentPage('home');
   };

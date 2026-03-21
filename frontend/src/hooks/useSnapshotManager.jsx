@@ -8,7 +8,7 @@ import {
   deleteAllSnapshots,
 } from '../services/snapshotService';
 
-function useSnapshotManager() {
+function useSnapshotManager(enabled = true) {
   const fileInputRef = useRef(null);
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -24,6 +24,10 @@ function useSnapshotManager() {
   const [editingSnapshotId, setEditingSnapshotId] = useState(null);
 
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     const loadSnapshots = async () => {
       try {
         const data = await fetchSnapshots();
@@ -37,7 +41,7 @@ function useSnapshotManager() {
     };
 
     loadSnapshots();
-  }, []);
+  }, [enabled]);
 
   const resetForm = () => {
     setTotalValue('');

@@ -1,23 +1,30 @@
 import { useState } from 'react';
+import { login } from '../services/authService';
 
 function LoginPage({ onLoginSuccess }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const validUsername = 'testuser';
-    const validPassword = 'testPassword';
-
-    if (username === validUsername && password === validPassword) {
-      sessionStorage.setItem('artfolio_logged_in', 'true');
-      onLoginSuccess();
+    if (submitting) {
       return;
     }
 
-    setError('Invalid username or password.');
+    try {
+      setSubmitting(true);
+      setError('');
+      await login(username, password);
+      onLoginSuccess();
+      return;
+    } catch (err) {
+      setError(err.message || 'Invalid username or password.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -27,12 +34,6 @@ function LoginPage({ onLoginSuccess }) {
         <p className="login-subtitle">
           Sign in to access the portfolio dashboard.
         </p>
-
-        <div className="login-demo-box">
-          <strong>Demo credentials</strong>
-          <div>Username: testuser</div>
-          <div>Password: testPassword</div>
-        </div>
 
         {error && (
           <div className="login-error">
@@ -72,7 +73,7 @@ function LoginPage({ onLoginSuccess }) {
           </div>
 
           <button type="submit" className="button button-primary login-button">
-            Log In
+            {submitting ? 'Signing In...' : 'Log In'}
           </button>
         </form>
       </div>

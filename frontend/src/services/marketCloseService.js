@@ -1,9 +1,7 @@
-import { buildApiUrl } from './api';
+import { apiFetch } from './api';
 
 export async function fetchMarketCloseHistory(symbol) {
-  const res = await fetch(
-    buildApiUrl(`/api/market-closes?symbol=${encodeURIComponent(symbol)}`)
-  );
+  const res = await apiFetch(`/api/market-closes?symbol=${encodeURIComponent(symbol)}`);
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -14,7 +12,7 @@ export async function fetchMarketCloseHistory(symbol) {
 }
 
 export async function fetchLatestMarketClose(symbol) {
-  const res = await fetch(buildApiUrl('/api/market-closes/fetch-latest'), {
+  const res = await apiFetch('/api/market-closes/fetch-latest', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ symbol }),
@@ -30,7 +28,7 @@ export async function fetchLatestMarketClose(symbol) {
 }
 
 export async function fetchAllLatestMarketCloses() {
-  const res = await fetch(buildApiUrl('/api/market-closes/fetch-all'), {
+  const res = await apiFetch('/api/market-closes/fetch-all', {
     method: 'POST',
   });
 
