@@ -1,6 +1,8 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const app = express();
@@ -19,7 +21,53 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('Database connection error:', err));
 
-app.get('/api/snapshots', async (req, res) => {
+const USERS = [
+  { username: process.env.USER1_USERNAME, hash: process.env.USER1_PASSWORD_HASH },
+  { username: process.env.USER2_USERNAME, hash: process.env.USER2_PASSWORD_HASH },
+];
+
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // "Bearer <token>"
+  if (!token) return res.status(401).json({ error: 'No token provided.' });
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ error: 'Invalid or expired token.' });
+    req.user = user;
+    next();
+  });
+}
+
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required.' });
+  }
+
+  const user = USERS.find(
+    (u) => u.username && u.username.toLowerCase() === username.toLowerCase()
+  );
+
+  const dummyHash = '$2b$10$invalidhashfortimingprotectionxxxxxxxxxxxxxxxxxxxxxxxx';
+  const isValid = user
+    ? await bcrypt.compare(password, user.hash)
+    : await bcrypt.compare(password, dummyHash).then(() => false);
+
+  if (!isValid) {
+    return res.status(401).json({ error: 'Invalid username or password.' });
+  }
+
+  const token = jwt.sign(
+    { username: user.username },
+    process.env.JWT_SECRET,
+    { expiresIn: '8h' }
+  );
+
+  res.json({ token });
+});
+
+
+app.get('/api/snapshots', authenticateToken, async (req, res) => {
   try {
     const snapshots = await PortfolioSnapshot.find().sort({ date: 1 });
     res.json(snapshots);
@@ -29,7 +77,7 @@ app.get('/api/snapshots', async (req, res) => {
   }
 });
 
-app.post('/api/snapshots', async (req, res) => {
+app.post('/api/snapshots', authenticateToken, async (req, res) => {
   try {
     const { date, totalValue, weights } = req.body;
 
@@ -50,7 +98,7 @@ app.post('/api/snapshots', async (req, res) => {
   }
 });
 
-app.put('/api/snapshots/:id', async (req, res) => {
+app.put('/api/snapshots/:id', authenticateToken, async (req, res) => {
   try {
     const { date, totalValue, weights } = req.body;
 
@@ -79,7 +127,7 @@ app.put('/api/snapshots/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/snapshots/:id', async (req, res) => {
+app.delete('/api/snapshots/:id', authenticateToken, async (req, res) => {
   try {
     const result = await PortfolioSnapshot.findByIdAndDelete(req.params.id);
     if (!result) {
@@ -92,7 +140,7 @@ app.delete('/api/snapshots/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/snapshots', async (req, res) => {
+app.delete('/api/snapshots', authenticateToken, async (req, res) => {
   try {
     await PortfolioSnapshot.deleteMany({});
     res.json({ message: 'All snapshots deleted' });
@@ -102,7 +150,7 @@ app.delete('/api/snapshots', async (req, res) => {
   }
 });
 
-app.get('/api/market-closes', async (req, res) => {
+app.get('/api/market-closes', authenticateToken, async (req, res) => {
   try {
     const symbol = req.query.symbol;
 
@@ -118,7 +166,7 @@ app.get('/api/market-closes', async (req, res) => {
   }
 });
 
-app.post('/api/market-closes/fetch-latest', async (req, res) => {
+app.post('/api/market-closes/fetch-latest', authenticateToken, async (req, res) => {
   try {
     const { symbol } = req.body;
 
@@ -134,7 +182,7 @@ app.post('/api/market-closes/fetch-latest', async (req, res) => {
   }
 });
 
-app.post('/api/market-closes/fetch-all', async (req, res) => {
+app.post('/api/market-closes/fetch-all', authenticateToken, async (req, res) => {
   try {
     const results = await archiveLatestForAllSupportedSymbols();
     res.json({ results });
@@ -144,7 +192,7 @@ app.post('/api/market-closes/fetch-all', async (req, res) => {
   }
 });
 
-app.get('/api/calendar-events', async (req, res) => {
+app.get('/api/calendar-events', authenticateToken, async (req, res) => {
   try {
     const events = await CalendarEvent.find().sort({ date: 1, createdAt: 1 });
     res.json(events);
@@ -154,7 +202,7 @@ app.get('/api/calendar-events', async (req, res) => {
   }
 });
 
-app.post('/api/calendar-events', async (req, res) => {
+app.post('/api/calendar-events', authenticateToken, async (req, res) => {
   try {
     const { title, body, date } = req.body;
 
@@ -180,7 +228,7 @@ app.post('/api/calendar-events', async (req, res) => {
   }
 });
 
-app.put('/api/calendar-events/:id', async (req, res) => {
+app.put('/api/calendar-events/:id', authenticateToken, async (req, res) => {
   try {
     const { title, body, date } = req.body;
 
@@ -213,7 +261,7 @@ app.put('/api/calendar-events/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/calendar-events/:id', async (req, res) => {
+app.delete('/api/calendar-events/:id', authenticateToken, async (req, res) => {
   try {
     const deleted = await CalendarEvent.findByIdAndDelete(req.params.id);
 
