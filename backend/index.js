@@ -1,7 +1,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
@@ -21,10 +20,10 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('Database connection error:', err));
 
-const USERS = [
-  { username: process.env.USER1_USERNAME, hash: process.env.USER1_PASSWORD_HASH },
-  { username: process.env.USER2_USERNAME, hash: process.env.USER2_PASSWORD_HASH },
-];
+function isDemoAccessEnabled() {
+  const value = String(process.env.DEMO_ACCESS_ENABLED || 'true').trim().toLowerCase();
+  return value !== 'false';
+}
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -37,33 +36,18 @@ function authenticateToken(req, res, next) {
   });
 }
 
-app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
-
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password are required.' });
-  }
-
-  const user = USERS.find(
-    (u) => u.username && u.username.toLowerCase() === username.toLowerCase()
-  );
-
-  const dummyHash = '$2b$10$invalidhashfortimingprotectionxxxxxxxxxxxxxxxxxxxxxxxx';
-  const isValid = user
-    ? await bcrypt.compare(password, user.hash)
-    : await bcrypt.compare(password, dummyHash).then(() => false);
-
-  if (!isValid) {
-    return res.status(401).json({ error: 'Invalid username or password.' });
+app.post('/api/demo-session', (req, res) => {
+  if (!isDemoAccessEnabled()) {
+    return res.status(403).json({ error: 'Demo access is currently disabled.' });
   }
 
   const token = jwt.sign(
-    { username: user.username },
+    { role: 'demo' },
     process.env.JWT_SECRET,
     { expiresIn: '8h' }
   );
 
-  res.json({ token });
+  res.json({ token, mode: 'demo' });
 });
 
 

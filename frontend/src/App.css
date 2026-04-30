@@ -486,25 +486,6 @@ body {
   margin-bottom: 14px;
 }
 
-.login-field {
-  margin-bottom: 14px;
-}
-
-.login-field label {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-
-.login-field input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 10px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font: inherit;
-}
-
 .login-button {
   width: 100%;
   margin-top: 6px;

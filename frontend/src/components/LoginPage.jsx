@@ -1,15 +1,11 @@
 import { useState } from 'react';
-import { login } from '../services/authService';
+import { createDemoSession } from '../services/authService';
 
 function LoginPage({ onLoginSuccess }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
+  const handleEnterDemo = async () => {
     if (submitting) {
       return;
     }
@@ -17,11 +13,11 @@ function LoginPage({ onLoginSuccess }) {
     try {
       setSubmitting(true);
       setError('');
-      await login(username, password);
+      await createDemoSession();
       onLoginSuccess();
       return;
     } catch (err) {
-      setError(err.message || 'Invalid username or password.');
+      setError(err.message || 'Unable to enter the demo right now.');
     } finally {
       setSubmitting(false);
     }
@@ -32,8 +28,12 @@ function LoginPage({ onLoginSuccess }) {
       <div className="login-card">
         <h1 className="login-title">ArtFolio</h1>
         <p className="login-subtitle">
-          Sign in to access the portfolio dashboard.
+          Enter the demo workspace to access the portfolio dashboard.
         </p>
+
+        <div className="login-demo-box">
+          This build uses a temporary demo access flow. No username or password is displayed or entered in the client.
+        </div>
 
         {error && (
           <div className="login-error">
@@ -41,41 +41,14 @@ function LoginPage({ onLoginSuccess }) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <div className="login-field">
-            <label htmlFor="login-username">Username</label>
-            <input
-              id="login-username"
-              type="text"
-              value={username}
-              onChange={(e) => {
-                setUsername(e.target.value);
-                setError('');
-              }}
-              placeholder="Enter username"
-              required
-            />
-          </div>
-
-          <div className="login-field">
-            <label htmlFor="login-password">Password</label>
-            <input
-              id="login-password"
-              type="password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setError('');
-              }}
-              placeholder="Enter password"
-              required
-            />
-          </div>
-
-          <button type="submit" className="button button-primary login-button">
-            {submitting ? 'Signing In...' : 'Log In'}
-          </button>
-        </form>
+        <button
+          type="button"
+          className="button button-primary login-button"
+          onClick={handleEnterDemo}
+          disabled={submitting}
+        >
+          {submitting ? 'Entering Demo...' : 'Enter Demo App'}
+        </button>
       </div>
     </div>
   );

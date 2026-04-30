@@ -2,6 +2,8 @@
 
 ArtFolio is a full-stack personal portfolio tracker built to record portfolio snapshots over time, monitor market ETF closes, manage a simple event calendar, and provide an educational investing reference page.
 
+The app currently uses a backend-issued demo session flow for access. No demo username or password should be displayed in the frontend or committed to source.
+
 ## Live demo
 
 - Frontend: `https://art-folio-git-main-arthurteng-2207s-projects.vercel.app/`
@@ -146,6 +148,8 @@ Create `backend/.env`:
 
 ```env
 MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=replace_with_a_long_random_secret
+DEMO_ACCESS_ENABLED=true
 ```
 
 ### 4. Run backend
@@ -184,6 +188,8 @@ Deploy the backend to Render and set:
 
 ```env
 MONGO_URI=your_mongodb_atlas_connection_string
+JWT_SECRET=replace_with_a_long_random_secret
+DEMO_ACCESS_ENABLED=true
 ```
 
 ### Frontend
@@ -230,7 +236,7 @@ Instead of being only a charting tool, it acts as a small investing workspace.
 Possible next steps include:
 - better calendar styling and dedicated calendar icon
 - notes/tags for snapshots
-- user authentication
+- production-grade authentication
 - improved market visualisations
 - export functions for snapshot history
 - more educational investing content

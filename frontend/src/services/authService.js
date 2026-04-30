@@ -1,20 +1,18 @@
 import { AUTH_TOKEN_STORAGE_KEY, apiFetch } from './api';
 
-export async function login(username, password) {
-  const res = await apiFetch('/api/login', {
+export async function createDemoSession() {
+  const res = await apiFetch('/api/demo-session', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
   });
 
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error(data.error || 'Login failed.');
+    throw new Error(data.error || 'Demo access failed.');
   }
 
   if (!data.token) {
-    throw new Error('Login succeeded but no token was returned.');
+    throw new Error('Demo access succeeded but no token was returned.');
   }
 
   sessionStorage.setItem(AUTH_TOKEN_STORAGE_KEY, data.token);
